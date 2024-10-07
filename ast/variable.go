@@ -6,7 +6,6 @@ import (
 	"ast-operation-parser/lexer/operators"
 	"ast-operation-parser/lexer/token"
 	"errors"
-	"fmt"
 )
 
 func MakeVariableDefinition(tokens *[]token.Token, i *int) (*nodes.VariableDefinition, error) {
@@ -47,8 +46,7 @@ func MakeVariableDefinition(tokens *[]token.Token, i *int) (*nodes.VariableDefin
 	//	return nil, err
 	//}
 	//expression, err := expressions.ParseRPN(rpn)
-	fmt.Println(valueTokens)
-	expression, err := expressions.InfixToRPNAST(valueTokens)
+	expression, err := expressions.InfixToRPN(valueTokens)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +116,7 @@ func MakeVariableAssigning(tokens *[]token.Token, i *int) (*nodes.VariableAssign
 		valueTokens = append(valueTokens, t) // Collect the token
 		*i++                                 // Move to the next token
 	}
-	expression, err := expressions.InfixToRPNAST(valueTokens)
+	expression, err := expressions.InfixToRPN(valueTokens)
 
 	if err != nil {
 		return nil, err

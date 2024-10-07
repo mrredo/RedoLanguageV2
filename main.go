@@ -9,7 +9,7 @@ import (
 
 func main() {
 	input := `var a = true
-a += lol(10);
+a += lol(10, 10+10+10 + lol(10));
 `
 	tokens := lexer.Tokenize(input)
 	//rpnE, err := expressions.InfixToRPNAST(tokens)
@@ -18,7 +18,7 @@ a += lol(10);
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println(rpn.Children[1].(nodes.VariableAssigning).Value.(nodes.FunctionCall).FunctionName)
+	fmt.Println(rpn.Children[1].(nodes.VariableAssigning).Value)
 	//fmt.Println(rpnE)
 
 	// Build the AST

@@ -22,71 +22,81 @@ func IsValue(tokens *[]token.Token, idx *int) bool {
 
 	return false
 }
-func ParseValue(tokens *[]token.Token, i *int) (nodes.ASTNode, error) {
-	t := (*tokens)[*i]
+func ParseValue(t token.Token, tokens []token.Token, idx *int) (nodes.ASTNode, error) {
 	if t.Type == token.TOKEN_NUMBER || t.Type == token.TOKEN_STRING || t.Type == token.TOKEN_BOOL {
 		return nodes.LiteralNode{
 			DataType: nodes.TokenToDataType[t.Type],
 			Value:    t.Value,
 		}, nil
 	} else if t.Type == token.TOKEN_IDENT {
-		// Check if the next token is a left parenthesis indicating a function call
-		if *i+1 < len(*tokens) && (*tokens)[*i+1].Type == token.TOKEN_LPAREN {
-			*i += 2 // Move past the identifier and left parenthesis
-			expectComma := false
-			var args []nodes.ASTNode
+		// Check if the next token is an opening parenthesis `(`, indicating a function call
+		if *idx+1 < len(tokens) && tokens[*idx+1].Type == token.TOKEN_LPAREN {
+			*idx++ // Move past the identifier (function name)
+			*idx++ // Move past the opening parenthesis `(`
 
-			for {
-				// Ensure we don't exceed the bounds of tokens
-				if *i >= len(*tokens) {
-					return nil, errors.New("invalid function call: missing closing parenthesis")
-				}
-
-				nextT := (*tokens)[*i]
-
-				// Handle end of function call
-				if nextT.Type == token.TOKEN_RPAREN {
-					*i++ // Move past the closing parenthesis
-					break
-				}
-
-				// Handle comma expectations
-				if expectComma {
-					if nextT.Type != token.TOKEN_COMMA {
-						return nil, errors.New("invalid function call: expected comma")
-					}
-					expectComma = false // Reset the expectation for a value
-					*i++                // Move past the comma
-					continue
-				}
-
-				// Parse the argument value
-				if IsValue(tokens, i) {
-					argNode, err := ParseValue(tokens, i)
-					if err != nil {
-						return nil, err
-					}
-					args = append(args, argNode)
-					expectComma = true // After a value, we expect a comma or closing parenthesis
-				} else {
-					return nil, errors.New("invalid function call: expected a value")
-				}
+			// Parse the function call arguments
+			args, err := parseFunctionArguments(tokens, idx)
+			if err != nil {
+				return nil, err
 			}
 
-			// Create and return the function call AST node
-			funcCallNode := nodes.FunctionCall{
+			return nodes.FunctionCall{
 				FunctionName: t.Value,
 				Arguments:    args,
-			}
-			return funcCallNode, nil
-		} else {
-			// If not followed by a left parenthesis, it's an invalid function call
-			return nil, errors.New("invalid expression: identifier not followed by function call")
+			}, nil
 		}
+
+		// Otherwise, treat it as a variable
+		return nodes.VariableNode{
+			Value: t.Value,
+		}, nil
+	}
+	return nil, errors.New("not a value")
+}
+
+// Function to parse arguments for function calls
+func parseFunctionArguments(tokens []token.Token, idx *int) ([]nodes.ASTNode, error) {
+	args := []nodes.ASTNode{}
+	parenCount := 1 // To ensure we properly track parentheses and avoid errors
+	argTokens := []token.Token{}
+
+	for *idx < len(tokens) {
+		currToken := tokens[*idx]
+
+		if currToken.Type == token.TOKEN_LPAREN {
+			parenCount++
+		} else if currToken.Type == token.TOKEN_RPAREN {
+			parenCount--
+			if parenCount == 0 {
+				// End of function arguments
+				//*idx++ // Move past the closing parenthesis
+				break
+			}
+		} else if currToken.Type == token.TOKEN_COMMA && parenCount == 1 {
+			// If we encounter a comma at the top level of the argument list, treat it as the end of one argument
+			arg, err := InfixToRPN(argTokens)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, arg)
+			argTokens = []token.Token{} // Reset for the next argument
+			*idx++
+			continue
+		}
+
+		argTokens = append(argTokens, currToken)
+		*idx++
 	}
 
-	return nodes.VariableNode{
-		Value: t.Value,
-	}, nil
+	// Handle the last argument after the loop
+	if len(argTokens) > 0 {
 
+		arg, err := InfixToRPN(argTokens)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
+	}
+
+	return args, nil
 }

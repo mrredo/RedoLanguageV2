@@ -5,11 +5,9 @@ import (
 	"ast-operation-parser/lexer/operators"
 	"ast-operation-parser/lexer/token"
 	"errors"
-	"fmt"
-	"slices"
 )
 
-func InfixToRPNAST(tokens []token.Token) (nodes.ASTNode, error) {
+func InfixToRPN(tokens []token.Token) (nodes.ASTNode, error) {
 	// Stack for operators
 	operatorStack := []token.Token{}
 	// Stack for ASTNodes
@@ -17,19 +15,14 @@ func InfixToRPNAST(tokens []token.Token) (nodes.ASTNode, error) {
 	expectValue := true
 	parentheseCount := 0
 
-	// Error check for invalid length of tokens
-	if len(tokens)%2 == 0 {
-		return nil, errors.New("invalid expression: even number of tokens")
-	}
-
-	for i, t := range tokens {
+	for i := 0; i < len(tokens); i++ {
+		t := tokens[i]
 		if i > 0 && tokens[i-1].Type == token.TOKEN_RPAREN && t.Type == token.TOKEN_MINUS {
 			expectValue = false
 		}
-
 		// If the token is a value (number, string, bool, or variable), create the corresponding ASTNode
 		if expectValue && IsValue(&tokens, &i) {
-			astNode, err := ParseValue(&tokens, &i)
+			astNode, err := ParseValue(t, tokens, &i) // Now ParseValue also handles function calls
 			if err != nil {
 				return nil, err
 			}
@@ -49,12 +42,14 @@ func InfixToRPNAST(tokens []token.Token) (nodes.ASTNode, error) {
 				if top.Type == token.TOKEN_LPAREN {
 					break
 				}
-				// Handle the operator popping to create BinaryOperation nodes
 				err := popOperatorToAST(&output, top)
 				if err != nil {
 					return nil, err
 				}
 			}
+			continue
+		} else if t.Type == token.TOKEN_COMMA {
+			// Comma is used to separate function arguments; it should be ignored here in RPN
 			continue
 		} else if _, ok := token.Operators[t.Type]; ok {
 			// Handle operators
@@ -79,6 +74,26 @@ func InfixToRPNAST(tokens []token.Token) (nodes.ASTNode, error) {
 			}
 			operatorStack = append(operatorStack, t)
 			expectValue = true
+		} else if t.Type == token.TOKEN_IDENT && i+1 < len(tokens) && tokens[i+1].Type == token.TOKEN_LPAREN {
+			// This is the start of a function call
+			i++ // Move past the identifier and parenthesis
+			i++ // Skip past '('
+
+			// Parse the function arguments using the helper function
+			args, err := parseFunctionArguments(tokens, &i)
+			if err != nil {
+				return nil, err
+			}
+
+			// Create a FunctionCall AST node
+			funcCall := nodes.FunctionCall{
+				FunctionName: t.Value,
+				Arguments:    args,
+			}
+
+			output = append(output, funcCall)
+			expectValue = false
+			continue
 		}
 	}
 
@@ -114,73 +129,17 @@ func popOperatorToAST(output *[]nodes.ASTNode, operator token.Token) error {
 	left := (*output)[len(*output)-2]
 	*output = (*output)[:len(*output)-2]
 
-	// Get accepted and returned types for the operator
+	// Accepted types and returned types for the binary operation
 	acceptedTypes := operators.OperatorAcceptedTypes[operator.Type]
 	returnedTypes := operators.OperatorReturnedTypes[operator.Type]
 
-	// Check if operand types are compatible with the operator
-	var rightR, leftR = nodes.GetDataType(right), nodes.GetDataType(left)
-
-	// Check if rightR types are accepted by the operator
-	accepted := false
-	if len(rightR) != 0 {
-		for _, rt := range rightR {
-			if slices.Contains(acceptedTypes, rt) {
-				accepted = true
-				break
-			}
-		}
-	} else {
-		accepted = true
-	}
-
-	if !accepted {
-		return errors.New("invalid operator type on the right side")
-	}
-
-	// Check if leftR types are accepted by the operator
-	accepted = false
-	fmt.Println(leftR, acceptedTypes)
-	if len(leftR) != 0 {
-		for _, lt := range leftR {
-			if slices.Contains(acceptedTypes, lt) {
-				accepted = true
-				break
-			}
-		}
-	} else {
-		accepted = true
-	}
-
-	if !accepted {
-		return errors.New("invalid operator type on the left side")
-	}
-
-	// Ensure the right and left types are compatible
-
-	matches := false
-	if len(rightR) != 0 && len(leftR) != 0 {
-		for _, rt := range rightR {
-			for _, lt := range leftR {
-				if rt == lt {
-					matches = true
-				}
-			}
-		}
-	} else {
-		matches = true
-	}
-	if !matches {
-		return errors.New("mismatched operand types")
-	}
-
-	// If all checks pass, create the BinaryOperation node
+	// Create the BinaryOperation AST node
 	binaryOp, err := nodes.NewBinaryOperation(left, right, operator.Value, acceptedTypes, returnedTypes)
 	if err != nil {
 		return err
 	}
 
-	// Push the new BinaryOperation node back onto the output stack
+	// Push the binary operation result back onto the output stack
 	*output = append(*output, binaryOp)
 	return nil
 }
