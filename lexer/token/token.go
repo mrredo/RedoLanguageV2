@@ -4,9 +4,14 @@ import "text/scanner"
 
 const (
 	// Token types
-	TOKEN_NUMBER        = "NUMBER"
-	TOKEN_STRING        = "STRING"
-	TOKEN_BOOL          = "BOOL"
+	TOKEN_NUMBER = "NUMBER"
+	TOKEN_STRING = "STRING"
+	TOKEN_BOOL   = "BOOL"
+
+	//true/false tokens not used in code, but are for translations and lexer
+	TOKEN_TRUE  = "true"
+	TOKEN_FALSE = "false"
+
 	TOKEN_PLUS          = "+"
 	TOKEN_MINUS         = "-"
 	TOKEN_MUL           = "*"
@@ -17,7 +22,7 @@ const (
 	TOKEN_NEWLINE       = "NEWLINE"
 	TOKEN_INVALID       = "INVALID"
 	TOKEN_IDENT         = "IDENT"
-	TOKEN_VAR           = "VAR"
+	TOKEN_VAR           = "var"
 	TOKEN_EQ            = "=="
 	TOKEN_NEQ           = "!="
 	TOKEN_LT            = "<"

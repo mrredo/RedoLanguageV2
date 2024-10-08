@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"ast-operation-parser/lexer/token"
+	"ast-operation-parser/locale"
 	"fmt"
 	"strconv"
 	"strings"
@@ -56,9 +57,9 @@ func (l *Lexer) NextToken() token.Token {
 	default:
 		if scanner.Ident == r {
 			switch l.scanner.TokenText() {
-			case "var":
+			case locale.EnglishToEnglish[token.TOKEN_VAR]:
 				return token.Token{Type: token.TOKEN_VAR, Value: l.scanner.TokenText(), Pos: pos}
-			case "true", "false":
+			case locale.EnglishToEnglish[token.TOKEN_TRUE], locale.EnglishToEnglish[token.TOKEN_FALSE]:
 				return token.Token{Type: token.TOKEN_BOOL, Value: l.scanner.TokenText(), Pos: pos}
 			}
 			return token.Token{Type: token.TOKEN_IDENT, Value: l.scanner.TokenText(), Pos: pos}

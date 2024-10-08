@@ -2,13 +2,12 @@ package main
 
 import (
 	"ast-operation-parser/ast"
-	"ast-operation-parser/ast/nodes"
 	"ast-operation-parser/lexer"
 	"fmt"
 )
 
 func main() {
-	input := `var a = true
+	input := `var ābols = true
 a += lol(10, 10+10+10 + lol(10));
 `
 	tokens := lexer.Tokenize(input)
@@ -18,7 +17,7 @@ a += lol(10, 10+10+10 + lol(10));
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println(rpn.Children[1].(nodes.VariableAssigning).Value)
+	fmt.Println(rpn.Children)
 	//fmt.Println(rpnE)
 
 	// Build the AST
